@@ -13,7 +13,7 @@ def create_app():
     # Calcular ruta base a partir del directorio actual donde está __init__.py
     basedir = os.path.abspath(os.path.dirname(__file__))
     # Construir la ruta absoluta al archivo SQLite; asume que el archivo está en el directorio raíz del proyecto
-    db_path = os.path.join(basedir, '..', '..', 'Base de datos UNEXCA.db')
+    db_path = os.path.join(basedir, '..', 'Base de datos UNEXCA.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
