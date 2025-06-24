@@ -2,95 +2,156 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph
 from io import BytesIO
 import os
+from datetime import datetime
+import locale
 
 class ConstancyPDFGenerator:
-    def __init__(self):
+    def __init__(self):  # Cambié _init_ por __init__
+        # Inicializa el objeto styles correctamente
         self.styles = getSampleStyleSheet()
-        # Ruta al directorio donde se encuentra este archivo
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        # Ruta a la imagen del membrete
-        self.logo_path = os.path.join(self.base_dir, 'assets', 'membrete.jpg')
+
+        # Estilo justificado
+        if 'BodyTextJustified' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='BodyTextJustified',
+                parent=self.styles['BodyText'],
+                fontSize=12,
+                leading=16,
+                spaceAfter=12,
+                alignment=4  # Justificado
+            ))
+
+        # Estilo para firma centrado
+        if 'SignatureStyle' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='SignatureStyle',
+                parent=self.styles['Normal'],
+                fontSize=11,
+                leading=16,
+                spaceBefore=6,
+                alignment=1  # Centrado
+            ))
+
+        # Ruta de imágenes
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))  # Cambié _file_ por __file__
+        self.assets_dir = os.path.join(self.base_dir, 'assets')
+
+        self.logo_unexca = os.path.join(self.assets_dir, 'unexca_logo.jpg')
+        self.logo_gobierno = os.path.join(self.assets_dir, 'gobierno_logo.jpg')
 
     def generate_pdf(self, data):
-        """
-        Genera un PDF de constancia con los datos proporcionados
-        
-        Args:
-            data (dict): Diccionario con los datos del estudiante
-                - nombre: Nombre del estudiante
-                - apellido: Apellido del estudiante
-                - cedula: Número de cédula
-                - nucleo: Núcleo académico
-                - periodo: Período académico
-                - carrera: Carrera que cursa
-                - seccion: Sección
-                - turno: Turno (Diurno, Vespertino, Nocturno)
-                
-        Returns:
-            BytesIO: Buffer con el contenido del PDF
-        """
+
         buffer = BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
-        
-        # Configurar la fuente
-        c.setFont('Times-Roman', 20)
-        
-        # Agregar subtítulo en negrita
-        subtitle = Paragraph("<b>Constancia</b>", self.styles['Heading2'])
-        subtitle.wrapOn(c, 600*mm, 160*mm)
-        subtitle.drawOn(c, 90*mm, 210*mm)
-        
-        # Texto principal con los datos personalizados
-        texto_constancia = f"""Quien suscribe,<b> Ing Yovany Díaz Jefe(E)Coordinación de Estudios</b> de la UNIVERSIDAD NACIONAL EXPERIMENTAL DE LA GRAN CARACAS, hace constar por medio de la presente que el(la) ciudadano(a) <b>{data['nombre']} {data['apellido']}</b>, titular de la cédula de Identidad N°V- <b>{data['cedula']}</b>, es estudiante activo(a) de esta universidad en el núcleo <b>{data['nucleo']}</b>, actualmente cursa período acádemico <b>{data['periodo']}</b> del Programa Nacional de Formación en <b>{data['carrera']} {data['seccion']}</b>, turno <b>{data['turno']}</b>"""
-        
-        paragraph = Paragraph(texto_constancia, self.styles["Normal"])
-        paragraph.wrapOn(c, 500, 100)
-        paragraph.drawOn(c, 20 * mm, 180 * mm)
-        
-        # Agregar la frase adicional
-        paragraph = Paragraph("Constancia que se expide a petición de la parte interesada, en Caracas a los")
-        paragraph.wrapOn(c, 500, 20)
-        paragraph.drawOn(c, 20 * mm, 170 * mm)
-        
-        # Agregar texto "Atentamente"
-        atentamente = Paragraph("Atentamente", self.styles['Normal'])
-        atentamente.wrapOn(c, 500, 30)
-        atentamente.drawOn(c, 96*mm, 95*mm)
-        
-        # Definir tamaño de página y línea
-        width, height = A4
-        x_start = (width - 180) / 2
-        x_end = x_start + 185
-        y = 220
-        
-        # Dibujar la línea
-        c.line(x_start, y, x_end, y)
-        
-        # Agregar información del firmante
-        ing_yovany = Paragraph("<b>ING. YOVANY DIAZ</b>", self.styles['Normal'])
-        ing_yovany.wrapOn(c, 500, 20)
-        ing_yovany.drawOn(c, 90*mm, 65*mm)
-        
-        jefe = Paragraph("<b>JEFE(E) COORDINACIÓN CONTROL DE ESTUDIOS</b>", self.styles['Normal'])
-        jefe.wrapOn(c, 500, 20)
-        jefe.drawOn(c, 60*mm, 56*mm)
-        
-        # Añadir logo si existe
+
+        left_margin = 25 * mm
+        right_margin = 25 * mm
+        doc_width = A4[0] - (2 * left_margin)
+        center_x = A4[0] / 2
+
+        # Reposicionar los logos más abajo para que sí se vean en pantalla
         try:
-            logo = ImageReader(self.logo_path)
-            c.drawImage(logo, 5*mm, 240*mm, width=200*mm, height=60*mm)
+            logo = ImageReader(self.logo_unexca)
+            c.drawImage(logo, left_margin, 255*mm, width=45*mm, height=25*mm, preserveAspectRatio=True)
         except Exception as e:
-            # Si no encuentra el logo, continuar sin él y registrar el error
-            print(f"Error al cargar el logo: {str(e)}")
-        
-        # Guardar el PDF
+            print("Error cargando logo UNEXCA:", e)
+
+        try:
+            logo = ImageReader(self.logo_gobierno)
+            c.drawImage(logo, A4[0] - right_margin - 45*mm, 255*mm, width=45*mm, height=25*mm, preserveAspectRatio=True)
+        except Exception as e:
+            print("Error cargando logo Gobierno:", e)
+
+
+        c.setFont("Helvetica-Bold", 12)
+        header_lines = [
+            "REPÚBLICA BOLIVARIANA DE VENEZUELA",
+            "MINISTERIO DEL PODER POPULAR PARA LA EDUCACIÓN UNIVERSITARIA",
+            "UNIVERSIDAD NACIONAL EXPERIMENTAL DE LA GRAN CARACAS - \"UNEXCA\""
+        ]
+
+        y_position = 245 * mm
+        for line in header_lines:
+            text_width = c.stringWidth(line, "Helvetica-Bold", 12)
+            c.drawString(center_x - (text_width / 2), y_position, line)
+            y_position -= 6 * mm
+
+        subtitle = Paragraph(
+            "<b>CONSTANCIA DE ESTUDIOS</b>", 
+            ParagraphStyle(
+                name='TitleStyle',
+                parent=self.styles['Heading2'],
+                fontSize=16,
+                alignment=1,
+                spaceAfter=14
+            )
+        )
+        subtitle.wrapOn(c, doc_width, 40*mm)
+        subtitle.drawOn(c, left_margin, 210*mm)
+
+        locale.setlocale(locale.LC_TIME, 'Spanish_Spain.1252')
+
+        hoy = datetime.now().strftime("%d de %B de %Y.")
+        hoy = hoy.replace(hoy.split()[2], hoy.split()[2].capitalize())
+
+        texto_constancia = (
+            f"Quien Suscribe, <b>JEFE(E) Ing. Yovany Diaz Coordinación Control de Estudios</b> "
+            f"de la <b>UNIVERSIDAD NACIONAL EXPERIMENTAL DE LA GRAN CARACAS</b>, hace constar por "
+            f"medio la presente que el(la) ciudadano(a) <b>{data['nombre']} {data['apellido']}</b>, "
+            f"titular de la cédula de identidad N° <b>V-{data['cedula']}</b>, es un estudiante activo(a) "
+            f"de esta universidad en el núcleo <b>{data['nucleo']}</b>, cursando el periodo académico "
+            f"<b>{data['periodo']}</b> del Programa Nacional de Formación <b>PNF - {data['carrera']}</b>, "
+            f"sección <b>{data['seccion']}</b>, turno <b>{data['turno']}</b>."
+        )
+
+        paragraph = Paragraph(texto_constancia, self.styles['BodyTextJustified'])
+        paragraph.wrapOn(c, doc_width, 100*mm)
+        paragraph.drawOn(c, left_margin, 160*mm)
+
+        texto_fecha = (
+            f"Constancia que se expide a petición de la parte interesada en Caracas a los {hoy}"
+        )
+        paragraph = Paragraph(texto_fecha, self.styles['BodyTextJustified'])
+        paragraph.wrapOn(c, doc_width, 20*mm)
+        paragraph.drawOn(c, left_margin, 140*mm)
+
+        c.setFont("Helvetica-Bold", 11)
+        text_width = c.stringWidth("Atentamente", "Helvetica-Bold", 11)
+        c.drawString(center_x - (text_width / 2), 115*mm, "Atentamente")
+
+        line_length = 60 * mm
+        c.line(center_x - (line_length / 2), 90*mm, center_x + (line_length / 2), 90*mm)
+
+        texts = [
+            "ING. YOVANY DIAZ",
+            "JEFE(E) COORDINACIÓN CONTROL DE ESTUDIOS",
+            "NUCLEO - ALTAGRACIA"
+        ]
+
+        y_position = 85*mm
+        for text in texts:
+            text_width = c.stringWidth(text, "Helvetica-Bold", 11)
+            c.drawString(center_x - (text_width / 2), y_position, text)
+            y_position -= 5*mm
+
+        c.setFont("Helvetica", 9)
+        contact_lines = [
+            "Esq. De Mijares. Av.Oeste 3. Caracas-Venezuela 1010A. Correo: cesolicitudes.unexca@gmail.com",
+            "Telefono:0212-860.51.81 Extensión 128. COORDINACION CONTROL DE ESTUDIOS - UNEXCA",
+            "RIF G-200128259"
+        ]
+
+        y_position = 30*mm
+        for line in contact_lines:
+            text_width = c.stringWidth(line, "Helvetica", 9)
+            c.drawString(center_x - (text_width / 2), y_position, line)
+            y_position -= 5*mm
+
         c.save()
-        
-        # Mover el puntero al inicio del buffer
+
         buffer.seek(0)
-        
         return buffer

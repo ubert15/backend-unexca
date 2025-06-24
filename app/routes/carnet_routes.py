@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 import os
 from ..services.card_generator.carnet_service import CarnetGenerator
+from ..services.card_generator import carnet_pdf
 from ..models.carnet import Carnet
 from ..models.user import db
 import datetime
@@ -62,27 +63,43 @@ def generar_carnet():
     
     return jsonify({'error': 'Formato de archivo no permitido'}), 400
 
-@carnet_bp.route('/descargar/<string:cedula>', methods=['GET'])
+@carnet_bp.route('/descargar-pdf/<string:cedula>', methods=['GET'])
 @jwt_required()
-def descargar_carnet(cedula):
+def descargar_pdf_carnet(cedula):
     """
-    Endpoint para descargar un carnet generado
+    Descarga el carnet estudiantil en formato PDF (generado en memoria).
     """
-    # Buscar el carnet más reciente para esta cédula
-    carnet = Carnet.query.filter_by(cedula=cedula).order_by(Carnet.fecha_emision.desc()).first()
-    
-    if not carnet:
-        return jsonify({'error': 'No se encontró carnet para esta cédula'}), 404
-    
-    # Verificar que el archivo exista
-    if not os.path.exists(carnet.ruta_imagen):
-        return jsonify({'error': 'El archivo de carnet no existe'}), 404
-    
     try:
-        # Enviar el archivo al cliente
-        return send_file(carnet.ruta_imagen, as_attachment=True)
+        # Buscar el carnet más reciente
+        carnet = Carnet.query.filter_by(cedula=cedula).order_by(Carnet.fecha_emision.desc()).first()
+        if not carnet:
+            return jsonify({'error': 'No se encontró carnet para esta cédula'}), 404
+
+        # Verificar que exista la imagen del carnet
+        if not os.path.exists(carnet.ruta_imagen):
+            return jsonify({'error': 'Imagen del carnet no encontrada'}), 404
+
+        # Ruta al reverso (si lo tienes fijo)
+        reverso_path = os.path.join('app', 'assets', 'card', 'carnetposterior.png')
+        if not os.path.exists(reverso_path):
+            reverso_path = None
+
+        # Generar PDF en memoria
+        from ..services.card_generator.carnet_pdf import generar_pdf_en_memoria
+        pdf_buffer = generar_pdf_en_memoria(carnet.ruta_imagen, reverso_path, cedula,)
+
+        # Retornar PDF sin guardarlo
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'carnet_{cedula}.pdf'
+        )
+
     except Exception as e:
-        return jsonify({'error': f'Error al descargar carnet: {str(e)}'}), 500
+        return jsonify({'error': f'Error al generar o enviar el PDF: {str(e)}'}),500
+
+
 
 @carnet_bp.route('/listar', methods=['GET'])
 @jwt_required()
@@ -189,3 +206,4 @@ def mostrar_imagen_carnet(carnet_id):
     
     # Devolver la imagen
     return send_file(carnet.ruta_imagen, mimetype='image/png')
+

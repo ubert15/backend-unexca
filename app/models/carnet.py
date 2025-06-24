@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from .user import db
 
 class Carnet(db.Model):
-    __tablename__ = 'carnets'
+    __tablename__ = 'carnets'  # Corregido de _tablename_ a __tablename__
     
     id = db.Column(db.Integer, primary_key=True)
     cedula = db.Column(db.String(20), db.ForeignKey('ESTUDIANTES.cedula'), nullable=False)
@@ -12,8 +12,8 @@ class Carnet(db.Model):
     fecha_vencimiento = db.Column(db.DateTime)
     ruta_imagen = db.Column(db.String(255))
     
-    def __init__(self, cedula, duracion_meses=12):
+    def __init__(self, cedula, duracion_meses=12):  # Corregido de _init_ a __init__
         self.cedula = cedula
         self.fecha_emision = datetime.utcnow()
-        self.fecha_vencimiento = self.fecha_emision + timedelta(days=30*duracion_meses)
+        self.fecha_vencimiento = self.fecha_emision + timedelta(days=30 * duracion_meses)
         self.ruta_imagen = f"img/carnets/{cedula}.png"
