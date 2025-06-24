@@ -28,3 +28,6 @@ def create_app():
     app.register_blueprint(carnet_bp, url_prefix='/api/carnet')
     
     return app
+
+
+app = create_app()
